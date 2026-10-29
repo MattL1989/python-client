@@ -86,6 +86,10 @@ class MobileErrorHandler(errorhandler.ErrorHandler):
         """
         https://www.w3.org/TR/webdriver/#errors
         """
+        status = response.get('status')
+        if not status or status == errorhandler.ErrorCode.SUCCESS:
+            return
+
         payload = response.get('value', '')
         if isinstance(payload, dict):
             payload_dict = payload
@@ -93,15 +97,13 @@ class MobileErrorHandler(errorhandler.ErrorHandler):
             try:
                 payload_dict = json.loads(payload)
             except (json.JSONDecodeError, TypeError):
-                return
-            if not isinstance(payload_dict, dict):
-                return
-        value = payload_dict.get('value')
-        if not isinstance(value, dict):
-            return
-        error = value.get('error')
-        if not error:
-            return
+                payload_dict = None
+        value = payload_dict.get('value') if isinstance(payload_dict, dict) else None
+        error = value.get('error') if isinstance(value, dict) else None
+        if not isinstance(value, dict) or not error:
+            # The response is an error, but its body is not a W3C error object,
+            # for example an HTML error page returned by a proxy
+            raise sel_exceptions.WebDriverException(msg=str(payload))
 
         message = value.get('message', error)
         stacktrace = value.get('stacktrace', '')
