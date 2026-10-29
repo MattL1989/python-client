@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import uuid
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from selenium.webdriver.remote.remote_connection import RemoteConnection
@@ -35,6 +37,21 @@ def _get_new_headers(key: str, headers: dict[str, str]) -> dict[str, str]:
     return {k: v for k, v in headers.items() if k.lower() != lower_key}
 
 
+class _classorinstancemethod:
+    """Bind the wrapped function to the instance when accessed on one, else to the class.
+
+    Selenium's RemoteConnection.get_remote_connection_headers is bound this way, so that
+    a connection uses the user agent and the extra headers of its own client config.
+    """
+
+    def __init__(self, func: Callable) -> None:
+        self.func = func
+        functools.update_wrapper(self, func)  # type: ignore[arg-type]
+
+    def __get__(self, obj: Any, cls: type | None = None) -> Callable:
+        return functools.partial(self.func, obj if obj is not None else cls)
+
+
 class AppiumConnection(RemoteConnection):
     """
     A subclass of selenium.webdriver.remote.remote_connection.Remoteconnection.
@@ -50,19 +67,19 @@ class AppiumConnection(RemoteConnection):
     user_agent = f'{PREFIX_HEADER}{library_version()} ({RemoteConnection.user_agent})'
     extra_headers = {}
 
-    @classmethod
+    @_classorinstancemethod
     def get_remote_connection_headers(cls, parsed_url: 'ParseResult', keep_alive: bool = True) -> dict[str, Any]:
         """Override get_remote_connection_headers in RemoteConnection to control the extra headers.
         This method will be used in sending a request method in this class.
-        """
 
-        extra_headers = cls.extra_headers.copy()
+        When called on a connection instance, the user agent and the extra headers come from
+        that connection's client config, as in RemoteConnection.
+        """
+        headers = _get_new_headers(
+            HEADER_IDEMOTENCY_KEY, super().get_remote_connection_headers(parsed_url, keep_alive=keep_alive)
+        )
         if parsed_url.path.endswith('/session'):
             # https://github.com/appium/appium-base-driver/pull/400
             # Keep the per-request idempotency key local: sessions may be created concurrently.
-            extra_headers[HEADER_IDEMOTENCY_KEY] = str(uuid.uuid4())
-        else:
-            extra_headers = _get_new_headers(HEADER_IDEMOTENCY_KEY, extra_headers)
-            cls.extra_headers = extra_headers
-
-        return {**super().get_remote_connection_headers(parsed_url, keep_alive=keep_alive), **extra_headers}
+            headers[HEADER_IDEMOTENCY_KEY] = str(uuid.uuid4())
+        return headers
