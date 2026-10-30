@@ -272,8 +272,10 @@ class WebDriver(
 
         self.error_handler = MobileErrorHandler()
 
-        if client_config and client_config.direct_connection:
-            self._update_command_executor(keep_alive=client_config.keep_alive)
+        # A custom command executor brings its own client config, so read it from the executor.
+        executor_config = getattr(self.command_executor, 'client_config', None)
+        if isinstance(executor_config, AppiumClientConfig) and executor_config.direct_connection:
+            self._update_command_executor(keep_alive=executor_config.keep_alive)
 
         self._absent_extensions: set[str] = set()
 

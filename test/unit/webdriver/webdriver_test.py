@@ -19,6 +19,7 @@ import httpretty
 import pytest
 import urllib3
 from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.remote.client_config import ClientConfig
 
 from appium import webdriver
 from appium.options.android import UiAutomator2Options
@@ -233,6 +234,73 @@ class TestWebDriverWebDriver:
         assert driver.command_executor._client_config.remote_server_addr == SERVER_URL_BASE
         assert driver.contexts == ['NATIVE_APP', 'CHROMIUM']
         assert isinstance(driver.command_executor, AppiumConnection)
+
+    @httpretty.activate
+    def test_create_session_register_uridirect_with_custom_connection(self):
+        httpretty.register_uri(
+            httpretty.POST,
+            f'{SERVER_URL_BASE}/session',
+            body=json.dumps(
+                {
+                    'sessionId': 'session-id',
+                    'capabilities': {
+                        'deviceName': 'Android Emulator',
+                        'directConnectProtocol': 'http',
+                        'directConnectHost': 'localhost2',
+                        'directConnectPort': 4800,
+                        'directConnectPath': '/special/path/wd/hub',
+                    },
+                }
+            ),
+        )
+
+        httpretty.register_uri(
+            httpretty.GET,
+            'http://localhost2:4800/special/path/wd/hub/session/session-id/contexts',
+            body=json.dumps({'value': ['NATIVE_APP', 'CHROMIUM']}),
+        )
+
+        # direct connect is enabled in the custom connection's own client config
+        client_config = AppiumClientConfig(remote_server_addr=SERVER_URL_BASE, direct_connection=True, keep_alive=False)
+        driver = webdriver.Remote(AppiumConnection(client_config=client_config), options=UiAutomator2Options())
+
+        assert driver.command_executor.client_config.remote_server_addr == 'http://localhost2:4800/special/path/wd/hub'
+        assert driver.command_executor.client_config.keep_alive is False
+        assert driver.contexts == ['NATIVE_APP', 'CHROMIUM']
+        assert isinstance(driver.command_executor, AppiumConnection)
+
+    @httpretty.activate
+    def test_create_session_with_selenium_client_config(self):
+        httpretty.register_uri(
+            httpretty.POST,
+            f'{SERVER_URL_BASE}/session',
+            body=json.dumps(
+                {
+                    'sessionId': 'session-id',
+                    'capabilities': {
+                        'deviceName': 'Android Emulator',
+                        'directConnectProtocol': 'http',
+                        'directConnectHost': 'localhost2',
+                        'directConnectPort': 4800,
+                        'directConnectPath': '/special/path/wd/hub',
+                    },
+                }
+            ),
+        )
+
+        httpretty.register_uri(
+            httpretty.GET,
+            f'{SERVER_URL_BASE}/session/session-id/contexts',
+            body=json.dumps({'value': ['NATIVE_APP', 'CHROMIUM']}),
+        )
+
+        # Selenium's ClientConfig has no direct_connection, so direct connect stays off
+        client_config = ClientConfig(remote_server_addr=SERVER_URL_BASE)
+        driver = webdriver.Remote(SERVER_URL_BASE, options=UiAutomator2Options(), client_config=client_config)
+
+        assert driver.session_id == 'session-id'
+        assert driver.command_executor.client_config.remote_server_addr == SERVER_URL_BASE
+        assert driver.contexts == ['NATIVE_APP', 'CHROMIUM']
 
     @httpretty.activate
     def test_create_session_remote_server_addr_treatment_with_appiumclientconfig(self):
