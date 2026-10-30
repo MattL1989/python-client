@@ -26,6 +26,15 @@ class TestAndroidKey:
         assert AndroidKey.CAMERA == 27
         assert AndroidKey.SPACE == 62
 
+    def test_has_zoom_and_clipboard_codes(self):
+        assert AndroidKey.ZOOM_IN == 168
+        assert AndroidKey.ZOOM_OUT == 169
+        assert AndroidKey.KEYCODE_ZOOM_IN == AndroidKey.ZOOM_IN
+        assert AndroidKey.KEYCODE_ZOOM_OUT == AndroidKey.ZOOM_OUT
+        assert AndroidKey.CUT == 277
+        assert AndroidKey.COPY == 278
+        assert AndroidKey.PASTE == 279
+
     def test_has_some_metastates(self):
         assert AndroidKeyMetastate.NONE == 0
         assert AndroidKeyMetastate.META_SHIFT_ON == 0x00000001

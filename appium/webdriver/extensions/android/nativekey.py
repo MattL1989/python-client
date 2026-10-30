@@ -637,10 +637,14 @@ class AndroidKey:
     CHANNEL_DOWN = 167
 
     # Key code constant: Zoom in key.
-    KEYCODE_ZOOM_IN = 168
+    ZOOM_IN = 168
+    # Old name, kept for backward compatibility.
+    KEYCODE_ZOOM_IN = ZOOM_IN
 
     # Key code constant: Zoom out key.
-    KEYCODE_ZOOM_OUT = 169
+    ZOOM_OUT = 169
+    # Old name, kept for backward compatibility.
+    KEYCODE_ZOOM_OUT = ZOOM_OUT
 
     # Key code constant: TV key.
     # On TV remotes, switches to viewing live TV.
@@ -1053,6 +1057,9 @@ class AndroidKey:
 
     # Key code constant: Copy key.
     COPY = 278
+
+    # Key code constant: Paste key.
+    PASTE = 279
 
     gamepad_buttons = [
         BUTTON_A,
