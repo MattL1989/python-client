@@ -71,6 +71,8 @@ class AppiumOptions(
         self._caps = self.default_capabilities
         # FIXME: https://github.com/SeleniumHQ/selenium/issues/10755
         self._ignore_local_proxy = False
+        # Read by the inherited BaseOptions.proxy property
+        self._proxy = None
 
     def set_capability(self: T, name: str, value: Any) -> T:  # type: ignore[override]
         w3c_name = name if name in self.W3C_CAPABILITY_NAMES or ':' in name else f'{APPIUM_PREFIX}{name}'
