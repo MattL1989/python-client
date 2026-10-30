@@ -68,7 +68,8 @@ class AppiumOptions(
 
     # noinspection PyMissingConstructor
     def __init__(self) -> None:
-        self._caps = self.default_capabilities
+        self._caps = {}
+        self.load_capabilities(self.default_capabilities)
         # FIXME: https://github.com/SeleniumHQ/selenium/issues/10755
         self._ignore_local_proxy = False
 
