@@ -15,12 +15,16 @@
 import logging
 import sys
 
+# Created once, so calling setup_logger again doesn't add a second handler
+# that prints every message twice.
+_stderr_handler = logging.StreamHandler(stream=sys.stderr)
+
 
 def setup_logger(level: int = logging.NOTSET) -> None:
     logger.propagate = False
     logger.setLevel(level)
-    handler = logging.StreamHandler(stream=sys.stderr)
-    logger.addHandler(handler)
+    # addHandler does nothing when the handler is already attached
+    logger.addHandler(_stderr_handler)
 
 
 # global logger
