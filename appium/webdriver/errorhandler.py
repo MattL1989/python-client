@@ -118,9 +118,10 @@ class MobileErrorHandler(errorhandler.ErrorHandler):
                 exception_class = appium_exceptions.InvalidSwitchToTargetException
 
         if exception_class is sel_exceptions.UnexpectedAlertPresentException:
+            data = value.get('data')
             raise sel_exceptions.UnexpectedAlertPresentException(
                 msg=message,
                 stacktrace=format_stacktrace(stacktrace),
-                alert_text=value.get('data'),
+                alert_text=data.get('text') if isinstance(data, dict) else None,
             )
         raise exception_class(msg=message, stacktrace=format_stacktrace(stacktrace))
