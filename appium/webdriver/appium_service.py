@@ -18,6 +18,7 @@ import shutil
 import subprocess as sp
 import sys
 import time
+import warnings
 from collections.abc import Callable
 from ipaddress import AddressValueError, IPv6Address
 from typing import Any
@@ -201,6 +202,10 @@ def is_service_listening(url: str, timeout: float = 5, custom_validator: Callabl
     """
     Check if the service is running
 
+    The server certificate is not verified for HTTPS urls, so that a server using
+    a self-signed certificate is detected as well. The check only sends a HEAD request
+    and reads the response status.
+
     Args:
         url: Full server url
         timeout: Timeout in float seconds
@@ -210,13 +215,15 @@ def is_service_listening(url: str, timeout: float = 5, custom_validator: Callabl
         True if Appium server is running before the timeout
     """
     time_started_sec = time.perf_counter()
-    conn = urllib3.PoolManager(timeout=1.0)
+    conn = urllib3.PoolManager(timeout=1.0, cert_reqs='CERT_NONE')
     while time.perf_counter() < time_started_sec + timeout:
         if custom_validator is not None:
             custom_validator()
         # noinspection PyUnresolvedReferences
         try:
-            resp = conn.request('HEAD', url)
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', urllib3.exceptions.InsecureRequestWarning)
+                resp = conn.request('HEAD', url)
             if resp.status < HTTP_STATUS_ERROR:
                 return True
         except urllib3.exceptions.HTTPError:
