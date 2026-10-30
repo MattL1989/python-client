@@ -377,6 +377,76 @@ class TestWebDriverWebDriver:
         driver.delete_extensions()
 
     @httpretty.activate
+    def test_add_command_per_driver(self):
+        class CustomURLCommand(ExtensionBase):
+            def method_name(self):
+                return 'test_command'
+
+            def test_command(self):
+                return self.execute()['value']
+
+            def add_command(self):
+                return 'get', '/session/$sessionId/path/to/custom/url'
+
+        httpretty.register_uri(
+            httpretty.POST,
+            appium_command('/session'),
+            responses=[
+                httpretty.Response(body=json.dumps({'sessionId': session_id, 'capabilities': {}}))
+                for session_id in ('session-a', 'session-b', 'session-c')
+            ],
+        )
+        for session_id in ('session-a', 'session-b'):
+            httpretty.register_uri(
+                httpretty.GET,
+                appium_command(f'/session/{session_id}/path/to/custom/url'),
+                body=json.dumps({'value': session_id}),
+            )
+
+        driver_a = webdriver.Remote(SERVER_URL_BASE, options=UiAutomator2Options(), extensions=[CustomURLCommand])
+        driver_b = webdriver.Remote(SERVER_URL_BASE, options=UiAutomator2Options(), extensions=[CustomURLCommand])
+        driver_without_extensions = webdriver.Remote(SERVER_URL_BASE, options=UiAutomator2Options())
+
+        # each driver calls the command on its own session
+        assert driver_a.test_command() == 'session-a'
+        assert driver_b.test_command() == 'session-b'
+        assert not hasattr(driver_without_extensions, 'test_command')
+        assert not hasattr(WebDriver, 'test_command')
+
+        # deleting the extensions of one driver keeps the other driver's ones
+        driver_a.delete_extensions()
+        assert not hasattr(driver_a, 'test_command')
+        assert driver_b.test_command() == 'session-b'
+
+    @httpretty.activate
+    def test_delete_extensions_keeps_overridden_method(self):
+        class CustomStatusCommand(ExtensionBase):
+            def method_name(self):
+                return 'get_status'
+
+            def get_status(self):
+                return self.execute()['value']
+
+            def add_command(self):
+                return 'get', '/session/$sessionId/path/to/custom/status'
+
+        driver = ios_w3c_driver_with_extensions([CustomStatusCommand])
+        other_driver = ios_w3c_driver()
+        httpretty.register_uri(
+            httpretty.GET,
+            appium_command('/session/1234567890/path/to/custom/status'),
+            body=json.dumps({'value': 'custom status'}),
+        )
+        httpretty.register_uri(httpretty.GET, appium_command('/status'), body=json.dumps({'value': {'ready': True}}))
+
+        assert driver.get_status() == 'custom status'
+        assert other_driver.get_status() == {'ready': True}
+
+        driver.delete_extensions()
+        assert driver.get_status() == {'ready': True}
+        assert other_driver.get_status() == {'ready': True}
+
+    @httpretty.activate
     def test_create_session_with_custom_connection(self):
         httpretty.register_uri(
             httpretty.POST,
