@@ -113,9 +113,8 @@ class ExtensionBase:
         #. Remove added commands (if needed)
             .. code-block:: python
 
-                # New commands are added by `setattr`. They remain in the module,
-                # so you should explicitly delete them to define the same name method
-                # with different arguments or process in the method.
+                # New commands are added to the driver instance by `setattr`.
+                # They remain on that driver until you explicitly delete them.
                 driver.delete_extensions()
 
 
@@ -281,11 +280,11 @@ class WebDriver(
         for extension in self._extensions:
             instance = extension(self.execute)
             method_name = instance.method_name()
-            if hasattr(WebDriver, method_name):
+            if hasattr(self, method_name):
                 logger.debug(f"Overriding the method '{method_name}'")
 
             # add a new method named 'instance.method_name()' and call it
-            setattr(WebDriver, method_name, getattr(instance, method_name))
+            setattr(self, method_name, getattr(instance, method_name))
             method, url_cmd = instance.add_command()
             self.command_executor.add_command(method_name, method.upper(), url_cmd)
 
@@ -298,12 +297,12 @@ class WebDriver(
             ...
 
     def delete_extensions(self) -> None:
-        """Delete extensions added in the class with 'setattr'"""
+        """Delete extensions added to this driver with 'setattr'"""
         for extension in self._extensions:
             instance = extension(self.execute)
             method_name = instance.method_name()
-            if hasattr(WebDriver, method_name):
-                delattr(WebDriver, method_name)
+            if method_name in self.__dict__:
+                delattr(self, method_name)
 
     def _update_command_executor(self, keep_alive: bool) -> None:
         """Update command executor following directConnect feature"""
