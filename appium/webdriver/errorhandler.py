@@ -41,7 +41,7 @@ ERROR_TO_EXC_MAPPING: dict[str, type[sel_exceptions.WebDriverException]] = {
     'script timeout': sel_exceptions.TimeoutException,
     'session not created': sel_exceptions.SessionNotCreatedException,
     'stale element reference': sel_exceptions.StaleElementReferenceException,
-    'detached shadow root': sel_exceptions.NoSuchShadowRootException,
+    'detached shadow root': sel_exceptions.DetachedShadowRootException,
     'timeout': sel_exceptions.TimeoutException,
     'unable to set cookie': sel_exceptions.UnableToSetCookieException,
     'unable to capture screen': sel_exceptions.ScreenshotException,
